@@ -2,27 +2,39 @@ import numpy as np
 import pandas as pd
 import librosa
 import sys
+import glob
 from keras.models import load_model
 
-model = load_model('models/sound-classification.h5')
+def predict():
+    df = pd.read_csv('class.csv')
+    model = load_model('models/sound-classification.h5')
+    wavFiles = glob.glob("predict/*.wav")
 
-# Predict Wav
-y, sr = librosa.load('UrbanSound8K/audio/fold5/100032-3-0-0.wav', duration=2.97)
-soundDuration = librosa.get_duration(y=y, sr=sr)
+    for wavFile in wavFiles:
+        y, sr = librosa.load(wavFile, duration=2.97)
+        soundDuration = librosa.get_duration(y=y, sr=sr)
+        if soundDuration < 2.97:
+            print('Skip wav file:{} because the duration is smaller than 3'.format(wavFile))
+            continue
+        # exract features
+        ps = librosa.feature.melspectrogram(y=y, sr=sr)
+        if ps.shape != (128, 128):
+            print('Skip wav file:{} because data shape is not (128, 128)'.format(wavFile))
+            continue
 
-if soundDuration < 2.97:
-    print('Sound durtaiton must be greater than 2.97 seconds')
-    sys.exit()
+        dataSet = []
+        dataSet.append(ps)
+        # reshape data to 128 x 128
+        dataSet = np.array([data.reshape( (128, 128, 1) ) for data in dataSet])
 
-ps = librosa.feature.melspectrogram(y=y, sr=sr)
+        predictions = model.predict(dataSet)[0]
+        print('============= Predict wav {} ============='.format(wavFile))
+        for index, predict in enumerate(predictions):
+            resultStr = '{0} {1:.2f}%'.format(df.iloc[index,1], predict * 100)
+            print(resultStr)
+        predictClass = model.predict_classes(dataSet)
+        print('Result: {}'.format(df.iloc[predictClass[0],1]))
+        print('============= Predict End =============')
 
-if ps.shape != (128, 128):
-    print('Is not in data shape (128, 128)')
-dataSet = [] # Dataset
-dataSet.append(ps)
-
-dataSet = np.array([data.reshape( (128, 128, 1) ) for data in dataSet])
-
-predictions = model.predict(dataSet)
-predictClass = model.predict_classes(dataSet)
-print('predictions:{} predictClass:{}'.format(predictions[0], predictClass[0]))
+if __name__ == '__main__':
+    predict()
