@@ -123,3 +123,5 @@ backup
 # UrbanSound8K
 UrbanSound8K
 predict
+logs
+augmented
