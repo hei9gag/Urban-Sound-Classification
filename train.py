@@ -2,6 +2,7 @@ import keras
 from keras.layers import Activation, Dense, Dropout, Conv2D, \
                          Flatten, MaxPooling2D
 from keras.models import Sequential
+from keras.callbacks import TensorBoard
 import librosa
 import librosa.display
 import numpy as np
@@ -9,6 +10,8 @@ import pandas as pd
 import random
 import time
 import warnings
+import os
+import time
 warnings.filterwarnings('ignore')
 
 csvFilePath = 'UrbanSound8K/metadata/UrbanSound8K.csv'
@@ -30,23 +33,38 @@ def importData():
     progressThreashold = 100
     print('===========Import data begin===========')
     for row in valid_data.itertuples():
-        if totalCount >= 10:
-            break
         if totalCount % progressThreashold == 0:
-            print('Importing data row:{}'.format(totalCount))
+            print('Importing data count:{}'.format(totalCount))
         y, sr = librosa.load('UrbanSound8K/audio/' + row.path, duration=2.97)
         ps = librosa.feature.melspectrogram(y=y, sr=sr)
         if ps.shape != (128, 128): continue
         D.append( (ps, row.classID) )
         totalCount += 1
     print('===========Import data finish===========')
+
+    print('===========Import augmented begin===========')
+    for root, _, files in os.walk('augmented'):
+        for file in files:
+            if totalCount % progressThreashold == 0:
+                print('Importing data count:{}'.format(totalCount))
+            fileName, fileExtension = os.path.splitext(file)
+            if fileExtension != '.wav': continue
+            wavFilePath = os.path.join(root, file)
+            y, sr = librosa.load(wavFilePath, duration=2.97)
+            ps = librosa.feature.melspectrogram(y=y, sr=sr)
+            if ps.shape != (128, 128): continue
+            label = fileName.split('-')[1]
+            D.append( (ps, label) )
+            totalCount += 1
+    print('===========Import augmented finish===========')
+
     global totalRecordCount
     totalRecordCount = totalCount
     return D
 
 def trainData(dataset):
     print('TotalCount: {}'.format(totalRecordCount))
-    trainDataEndIndex = int(totalRecordCount*0.9)
+    trainDataEndIndex = int(totalRecordCount*0.8)
     random.shuffle(dataset)
 
     train = dataset[:trainDataEndIndex]
@@ -102,12 +120,17 @@ def trainData(dataset):
         loss="categorical_crossentropy",
         metrics=['accuracy'])
 
+    tensorboard = TensorBoard(log_dir="logs/", histogram_freq=0,
+                          write_graph=True, write_images=True)
+
     model.fit(
         x=X_train,
         y=y_train,
         epochs=epochs,
         batch_size=batchSize,
-        validation_data= (X_test, y_test))
+        validation_data= (X_test, y_test),
+        callbacks=[tensorboard]
+    )
 
     score = model.evaluate(
         x=X_test,
