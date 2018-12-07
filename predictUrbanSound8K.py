@@ -6,8 +6,8 @@ import glob
 from keras.models import load_model
 
 def predict():
-    df = pd.read_csv('class.csv')
-    model = load_model('models/sound-classification.h5')
+    df = pd.read_csv('urbanSound.csv')
+    model = load_model('models/urban-sound.h5')
     wavFiles = glob.glob("predict/*.wav")
 
     for wavFile in wavFiles:
@@ -20,6 +20,7 @@ def predict():
 
         dataSet = []
         dataSet.append(ps)
+
         # reshape data to 128 x 128
         dataSet = np.array([data.reshape( (128, 128, 1) ) for data in dataSet])
 
