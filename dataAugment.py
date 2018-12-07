@@ -9,7 +9,7 @@ SPLIT_WAV = 1
 STRETCH_WAV = 2
 SHIFTED_WAV = 3
 
-def _concatWavToDuration(wavFile, duration = 7):
+def _concatWavToDuration(wavFile, duration):
     y, sr = librosa.load(wavFile, duration=duration)
     wavDuration = librosa.get_duration(y=y, sr=sr)
     if wavDuration >= duration:
@@ -50,7 +50,7 @@ def _augmentData(source, out, augmentType, augmentValue, label, duration):
             counter += 1
 
 # Split the wav into duration
-def _splitWav(direcoty, outDir, duration, label, maxSplit = 2):
+def _splitWav(direcoty, outDir, duration, label, maxSplit):
     counter = 1
     _createDirectoryIfNotExist(outDir)
     for root, _, files in os.walk(direcoty):
@@ -82,11 +82,11 @@ def _createDirectoryIfNotExist(directory):
 
 if __name__ == '__main__':
 
-    category = 'gun_shot'
-    label = 3 # 0: toilet_flush 1: shower 2: dog bark 3: gun shot
-    maxSoundDuration = 7
-    maxSplit = 2
-    soundDuration = 3
+    category = 'door'
+    label = 3 # 0: toilet_flush 1: shower 2: dog bark 3: door
+    maxSoundDuration = 8
+    maxSplit = 1
+    soundDuration = 4
 
     inDir = 'ToiletSoundSet/' + category
     outDir = 'ToiletSoundSet/augmented/tmp'

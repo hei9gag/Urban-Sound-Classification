@@ -3,6 +3,7 @@ import pandas as pd
 import librosa
 import sys
 import glob
+import os
 from keras.models import load_model
 
 def predict():
@@ -11,12 +12,13 @@ def predict():
     wavFiles = glob.glob("predict/*.wav")
 
     for wavFile in wavFiles:
+        librosa.load(wavFile)
         y, sr = librosa.load(wavFile, duration=2.97)
         # exract features
         ps = librosa.feature.melspectrogram(y=y, sr=sr)
         if ps.shape != (128, 128):
-            print('Skip wav file:{} because data shape is not (128, 128)'.format(wavFile))
-            continue
+            ps = _adjustedWavToAcceptableDuration(wavFile)
+            if ps.shape != (128, 128): continue
 
         dataSet = []
         dataSet.append(ps)
@@ -31,6 +33,25 @@ def predict():
         predictClass = model.predict_classes(dataSet)
         print('Result: {}'.format(df.iloc[predictClass[0],1]))
         print('============= Predict End =============')
+
+# Try to duplicate the wav to make it at least 3 seconds long
+def _adjustedWavToAcceptableDuration(wavFile):
+    y, sr = _concatWavToDuration(wavFile, 2.97)
+    librosa.output.write_wav('tmp.wav', y, sr)
+    x, xr = librosa.load('tmp.wav', duration=2.97)
+    os.remove('tmp.wav')
+    return librosa.feature.melspectrogram(y=x, sr=xr)
+
+def _concatWavToDuration(wavFile, duration):
+    y, sr = librosa.load(wavFile, duration=duration)
+    wavDuration = librosa.get_duration(y=y, sr=sr)
+    if wavDuration >= duration:
+        return (y, sr)
+    concatTime = int(duration / wavDuration)
+    concatedWav = [y]
+    for _ in range(concatTime):
+        concatedWav = np.append(concatedWav, y)
+    return (concatedWav, sr)
 
 if __name__ == '__main__':
     predict()
