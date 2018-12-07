@@ -26,8 +26,9 @@ I have only run the program on Mac OS
 2. Setup virtualenv in the source root folder by running virtualenv venv
 3. Run **source venv/bin/activate**
 4. Run **pip install -r requirements.txt** to install the library or pip install {library} one by one
-5. Download SoundDataSet from UrbanSound8K: https://urbansounddataset.weebly.com/urbansound8k.html
-6. Move UrbanSound8K to the source root folder
+5. You can run python predictUrbanSound8K.py to test whether the environment is correctly setup. The program will try to predict the wav files inside predict folder and returns predict result.
+6. Download SoundDataSet from UrbanSound8K: https://urbansounddataset.weebly.com/urbansound8k.html
+7. Move UrbanSound8K to the source root folder
 
 # How to train and predict using UrbanSound8K
 **Train Model**
