@@ -1,9 +1,7 @@
 # Sound Classification using CNN
----
 Sample code to show how to use the convolutional Neural Network (CNN) to build a model to classify sound
 
 # Sound Dataset
----
 UrbanSound8K
 https://urbansounddataset.weebly.com/urbansound8k.html
 
@@ -11,7 +9,6 @@ Remark:
 There are 2 set of sounds which are UrbanSound and UrbanSound8K. Please download UrbanSound8K
 
 # Prerequisites
----
 - Python 2.7
 - Keras
 - Librosa
@@ -20,12 +17,10 @@ There are 2 set of sounds which are UrbanSound and UrbanSound8K. Please download
 - Virtualenv
 
 # IDE
----
 VsCode
 https://code.visualstudio.com/download
 
 # Setup Environment
----
 I have only run the program on Mac OS
 1. Use git or download the source code
 2. Setup virtualenv in the source root folder by running virtualenv venv
@@ -35,7 +30,6 @@ I have only run the program on Mac OS
 6. Move UrbanSound8K to the source root folder
 
 # How to train and predict using UrbanSound8K
----
 **Train Model**
 Please run python trainUrbanSound8K.py
 The program will try to exract all wav features from UrbanSound8K folder, then build the model using CNN. At the end the program will export the models to folder in .h5 extension. You can use the model to predict .wav files.
@@ -62,7 +56,6 @@ street_music 0.01%
 Result: drilling
 ```
 # Program Logic
----
 The program logic is straightforward. It use librosa (the sound library) to convert the sound to spectrogram. Then it use the spectrogram as the sound feature.
 
 Then it will reshape the data in 128 x 128 and use as an input format for the conventional Neural Network (CNN) to build the model to classify sound.
@@ -70,7 +63,6 @@ Then it will reshape the data in 128 x 128 and use as an input format for the co
 For each wav files, the naming convension must be in {wav-name}-{label}, because the program will use string split('-') to get the class label from the wav file. The class label will be used to teach the CNN the correct category for the sound file.
 
 # Build Your Own Sound Classification
----
 You can create your own dataset and import the data to the program like **UrbanSound8K**.
 
 You can use **train.py** and **predict.py** as an reference. Also you need to update the **class.csv** for the sound classiifcation list.
