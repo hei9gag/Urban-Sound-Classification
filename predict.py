@@ -12,7 +12,6 @@ def predict():
     wavFiles = glob.glob("predict/*.wav")
 
     for wavFile in wavFiles:
-        librosa.load(wavFile)
         y, sr = librosa.load(wavFile, duration=2.97)
         # exract features
         ps = librosa.feature.melspectrogram(y=y, sr=sr)

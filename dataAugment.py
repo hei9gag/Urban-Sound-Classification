@@ -81,9 +81,13 @@ def _createDirectoryIfNotExist(directory):
 
 
 if __name__ == '__main__':
+    category = 'unknown'
+    # 0: toilet_flush
+    # 1: shower
+    # 2: unknown
+    # 3: door
 
-    category = 'door'
-    label = 3 # 0: toilet_flush 1: shower 2: dog bark 3: door
+    label = 2
     maxSoundDuration = 8
     maxSplit = 1
     soundDuration = 4
