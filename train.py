@@ -1,4 +1,5 @@
 import keras
+import keras.backend as K
 from keras.layers import Activation, Dense, Dropout, Conv2D, \
                          Flatten, MaxPooling2D
 from keras.models import Sequential
@@ -15,13 +16,14 @@ import time
 warnings.filterwarnings('ignore')
 
 # Your data source for wav files
-dataSourcePath = 'ToiletSoundSet/augmented'
+dataSourcePath = 'UrbanSound8K/augmented/train'
+trainSourcePath = 'UrbanSound8K/augmented/test'
 
 # Total wav records for training the model, will be updated by the program
 totalRecordCount = 0
 
 # Total classification class for your model (e.g. if you plan to classify 10 different sounds, then the value is 10)
-totalLabel = 4
+totalLabel = 10
 
 # model parameters for training
 batchSize = 128
@@ -37,32 +39,52 @@ def importData():
     dataSet = []
     totalCount = 0
     progressThreashold = 100
-    dataSource = dataSourcePath
-    for root, _, files in os.walk(dataSource):
+    os.walk(dataSourcePath)
+    print('============= Start import train data set =============')
+    for root, _, files in os.walk(dataSourcePath):
         for file in files:
             fileName, fileExtension = os.path.splitext(file)
             if fileExtension != '.wav': continue
-            if totalCount % progressThreashold == 0:
-                print('Importing data count:{}'.format(totalCount))
             wavFilePath = os.path.join(root, file)
             y, sr = librosa.load(wavFilePath, duration=2.97)
             ps = librosa.feature.melspectrogram(y=y, sr=sr)
             if ps.shape != (128, 128): continue
+            if totalCount % progressThreashold == 0:
+                print('Importing data count:{}'.format(totalCount))
             # extract the class label from the FileName
             label = fileName.split('-')[1]
             dataSet.append( (ps, label) )
             totalCount += 1
     global totalRecordCount
     totalRecordCount = totalCount
+
+    # Import train data set
+    print('============= Start import test data set =============')
+    totalCount = 0
+    for root, _, files in os.walk(trainSourcePath):
+        for file in files:
+            fileName, fileExtension = os.path.splitext(file)
+            if fileExtension != '.wav': continue
+            wavFilePath = os.path.join(root, file)
+            y, sr = librosa.load(wavFilePath, duration=2.97)
+            ps = librosa.feature.melspectrogram(y=y, sr=sr)
+            if ps.shape != (128, 128): continue
+            if totalCount % progressThreashold == 0:
+                print('Importing data count:{}'.format(totalCount))
+            # extract the class label from the FileName
+            label = fileName.split('-')[1]
+            dataSet.append( (ps, label) )
+            totalCount += 1
+
     return dataSet
 
 # This is the default import function for UrbanSound8K
 # https://urbansounddataset.weebly.com/urbansound8k.html
 # Please download the URBANSOUND8K and not URBANSOUND
 def buildModel(dataset):
-    print('TotalCount: {}'.format(totalRecordCount))
-    trainDataEndIndex = int(totalRecordCount*0.8)
-    random.shuffle(dataset)
+    # print('Total Train Data Count: {}'.format(totalRecordCount))
+    trainDataEndIndex = int(totalRecordCount)
+    # random.shuffle(dataset)
 
     train = dataset[:trainDataEndIndex]
     test = dataset[trainDataEndIndex:]
@@ -119,7 +141,7 @@ def buildModel(dataset):
     model.compile(
         optimizer="Adam",
         loss="categorical_crossentropy",
-        metrics=['accuracy'])
+        metrics=['accuracy', precision, recall])
 
     model.fit(
         x=X_train,
@@ -141,6 +163,32 @@ def buildModel(dataset):
     model.save('models/{}'.format(modelName))
 
     print('Model exported and finished')
+
+def precision(y_true, y_pred):
+    """Precision metric.
+
+    Only computes a batch-wise average of precision.
+
+    Computes the precision, a metric for multi-label classification of
+    how many selected items are relevant.
+    """
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + K.epsilon())
+    return precision
+
+def recall(y_true, y_pred):
+    """Recall metric.
+
+    Only computes a batch-wise average of recall.
+
+    Computes the recall, a metric for multi-label classification of
+    how many relevant items are selected.
+    """
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    recall = true_positives / (possible_positives + K.epsilon())
+    return recall
 
 if __name__ == '__main__':
     dataSet = importData()
