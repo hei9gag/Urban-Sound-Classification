@@ -1,114 +1,71 @@
 import librosa
-import numpy as np
-import pandas as pd
 import os
-import shutil
 
-CONCAT_WAV = 0
-SPLIT_WAV = 1
-STRETCH_WAV = 2
-SHIFTED_WAV = 3
-
-def _concatWavToDuration(wavFile, duration):
-    y, sr = librosa.load(wavFile, duration=duration)
-    wavDuration = librosa.get_duration(y=y, sr=sr)
-    if wavDuration >= duration:
-        return (y, sr)
-    concatTime = int(duration / wavDuration)
-    concatedWav = [y]
-    for _ in range(concatTime):
-        concatedWav = np.append(concatedWav, y)
-    return (concatedWav, sr)
-
-def _stretchWav(wavFile, duration, rate):
-    y, sr = librosa.load(wavFile, duration=duration)
-    stretchedWav = librosa.effects.time_stretch(y, rate=rate)
-    return (stretchedWav, sr)
-
-def _shiftWav(wavFile, duration, steps):
-    y, sr = librosa.load(wavFile, duration=duration)
-    shiftedWav = librosa.effects.pitch_shift(y, sr, n_steps=steps)
-    return (shiftedWav, sr)
-
-def _augmentData(source, out, augmentType, augmentValue, label, duration):
-    counter = 1
-    _createDirectoryIfNotExist(out)
-    for root, _, files in os.walk(source):
-        for file in files:
-            _, fileExtension = os.path.splitext(file)
-            if fileExtension != '.wav': continue
-            wavFilePath = os.path.join(root, file)
-            if augmentType == CONCAT_WAV:
-                wav, sr = _concatWavToDuration(wavFilePath, augmentValue)
-                fileName = str(counter).zfill(4) + '.wav'
-            elif augmentType == SHIFTED_WAV:
-                wav, sr = _shiftWav(wavFilePath, duration, augmentValue)
-
-            if augmentType != CONCAT_WAV:
-                fileName = str(counter).zfill(4) + '-' + str(label) + '.wav'
-            librosa.output.write_wav(out + '/' + fileName, wav, sr)
-            counter += 1
-
-# Split the wav into duration
-def _splitWav(direcoty, outDir, duration, label, maxSplit):
-    counter = 1
-    _createDirectoryIfNotExist(outDir)
-    for root, _, files in os.walk(direcoty):
-        for file in files:
-            _, fileExtension = os.path.splitext(file)
-            if fileExtension != '.wav': continue
-            wavFilePath = os.path.join(root, file)
-
-            # load wav
-            y, sr = librosa.load(wavFilePath)
-            wavDuration = librosa.get_duration(y=y, sr=sr)
-
-            # calculate num of split
-            splitTimes = min(maxSplit, int(wavDuration / duration))
-            offSet = 0
-
-            # split the wav into duration
-            for _ in range(splitTimes):
-                wav, rate = librosa.load(wavFilePath, offset=offSet, duration=duration)
-                fileName = str(counter).zfill(4) + '-' + str(label) + '.wav'
-                librosa.output.write_wav(outDir + '/' + fileName, wav, rate)
-                offSet += duration
-                counter += 1
+log_tag= '[Data Augmentation]'
+data_set_folder = 'ToiletSoundSet/dataset'
+out_dir_prefix = 'ToiletSoundSet/source'
+import_folder_paths = []
+class_dict = {
+    'shower': 0,
+    'toilet_flush': 1
+}
 
 def _createDirectoryIfNotExist(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+def _split_sound(in_dir, duration = 3.0):
+    folder_name = in_dir.split('/')[-1]
+    class_label = class_dict.get(folder_name)
+    if class_label is None:
+        _log('missing class label for: {}'.format(folder_name))
+        return
+    out_dir = out_dir_prefix + '/' + folder_name
+    _createDirectoryIfNotExist(out_dir)
+    counter = 0
+    for root, _, files in os.walk(in_dir):
+        for file in files:
+            _, file_extension = os.path.splitext(file)
+            if file_extension != '.wav': continue
+            wav_file_path = os.path.join(root, file)
+
+            # load wav
+            y, sr = librosa.load(wav_file_path)
+            wav_duration = librosa.get_duration(y=y, sr=sr)
+
+            split_times = int(wav_duration / duration)
+            offset = 0
+
+            # split the wav into duration
+            for _ in range(split_times):
+                wav, rate = librosa.load(wav_file_path, offset=offset, duration=duration)
+                wav_duration = librosa.get_duration(y=wav, sr=rate)
+                if wav_duration < duration:
+                    continue
+
+                if counter % 100 == 0:
+                    _log('imported sounds:{}'.format(counter))
+
+                file_name = folder_name + '-' + str(counter).zfill(4) + '-' + str(class_label) + '.wav'
+                librosa.output.write_wav(out_dir + '/' + file_name, wav, rate)
+                offset += duration
+                counter += 1
+    print('Total sound number for {} is {}'.format(folder_name, str(counter)))
+
+def _import_sounds():
+    global import_folder_paths
+    for root, dirnames, _ in os.walk(data_set_folder):
+        for dir_name in dirnames:
+            wav_folder_path = os.path.join(root, dir_name)
+            import_folder_paths.append(wav_folder_path)
+
+    for folder_path in import_folder_paths:
+        _log('start import sound from folder path:{}'.format(folder_path))
+        _split_sound(folder_path)
+
+def _log(message):
+    log_message = log_tag + ' ' + message
+    print(log_message)
 
 if __name__ == '__main__':
-    category = 'unknown'
-    # 0: toilet_flush
-    # 1: shower
-    # 2: unknown
-    # 3: door
-
-    label = 2
-    maxSoundDuration = 8
-    maxSplit = 1
-    soundDuration = 4
-
-    inDir = 'ToiletSoundSet/' + category
-    outDir = 'ToiletSoundSet/augmented/tmp'
-    augmentedDirPrefix = 'ToiletSoundSet/augmented'
-    sourceDir = augmentedDirPrefix + '/source/' + category
-
-    # Convert the wav to at least 7 seconds
-    print('======= concat wav begin =======')
-    _augmentData(inDir, outDir, CONCAT_WAV, maxSoundDuration, label, soundDuration)
-
-    # Split the wav file into 3 seconds wav
-    print('======= split wav begin =======')
-    _splitWav(outDir, sourceDir, soundDuration, label, maxSplit)
-
-    shiftRates = [-1, 1, -2, 2, -2.5, 2.5, 3.5, -3.5]
-    for rate in shiftRates:
-        print('======= split rate:{} begin ======='.format(rate))
-        augmentedOutputDir = augmentedDirPrefix + '/shifted/'+category+'/ps_' + str(rate)
-        _augmentData(sourceDir, augmentedOutputDir, SHIFTED_WAV, rate, label, soundDuration)
-
-    shutil.rmtree(outDir, ignore_errors=True)
+    _import_sounds()
